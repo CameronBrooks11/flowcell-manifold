@@ -1,5 +1,3 @@
-# flowcell_manifold/part2.py
-
 # === Standard Libraries ===
 from dataclasses import dataclass  # structured data containers
 from pathlib import Path  # for managing file paths and export locations
@@ -21,7 +19,8 @@ from flowcell_manifold.utils.viewer import (
 # === CAD spec ===
 @dataclass
 class Part2Spec:
-    """Specification for part2: a rectangular plate with a central hole, bottom chamfers, and top fillets."""
+    """Specification for part2: a rectangular plate with a
+    central hole, bottom chamfers, and top fillets."""
 
     length: float = 80.0
     width: float = 60.0
@@ -44,25 +43,65 @@ class Part2Spec:
 
 
 def make_part2(spec: Part2Spec) -> bd.Part | bd.Compound:
-    """Create a CAD model of part2."""
+    """
+    Create a CAD model of part2 using build123d primitives and operations.
+
+    This part demonstrates:
+    1. Creating a basic solid (Box)
+    2. Adding a through-hole (Cylinder subtraction)
+    3. Applying chamfers (beveled edges)
+    4. Applying fillets (rounded edges)
+    """
+
+    # Start with an empty Part object, which acts as the "canvas"
     p = bd.Part(None)
 
+    # --------------------------------------------------------------
     # 1. Base plate
+    # --------------------------------------------------------------
+    # Create a solid rectangular plate using Box.
+    # Box takes three dimensions: length (X), width (Y), and thickness (Z).
+    # The Box is automatically aligned at the origin (0,0,0) by default.
     p += bd.Box(spec.length, spec.width, spec.thickness)
 
+    # --------------------------------------------------------------
     # 2. Central through-hole
+    # --------------------------------------------------------------
+    # Subtract a Cylinder to create a through-hole.
+    # We subtract (p -= ...) because build123d uses a constructive
+    # solid geometry (CSG)
+    # workflow where adding primitives (+=) fuses them, and
+    # subtracting (-=) cuts them out.
+    # The Cylinder is placed at the origin (center of the Box).
     p -= bd.Cylinder(radius=spec.hole_diameter / 2, height=spec.thickness)
 
-    # 3. Chamfer bottom edges (edges at lowest Z)
+    # --------------------------------------------------------------
+    # 3. Chamfer bottom edges
+    # --------------------------------------------------------------
+    # A chamfer is a beveled edge, often added to remove sharp corners.
+    # To apply chamfers, we first select the edges to modify.
+    # Here we use group_by(Axis.Z) to group all edges by their Z-height:
+    # - group_by(Axis.Z)[0] gives the group of edges at the lowest Z (bottom).
     bottom_edges = p.edges().group_by(bd.Axis.Z)[0]
     if spec.chamfer_distance > 0 and bottom_edges:
+        # Apply a chamfer of the specified distance to all bottom edges.
         p = bd.chamfer(bottom_edges, length=spec.chamfer_distance)
 
-    # 4. Fillet top edges (edges at highest Z)
+    # --------------------------------------------------------------
+    # 4. Fillet top edges
+    # --------------------------------------------------------------
+    # A fillet rounds off edges, improving aesthetics and
+    # reducing stress concentrations.
+    # We again use group_by(Axis.Z), but select [-1], which means
+    # the highest Z (top edges).
+    # If the shape has intermediate Z levels (e.g., if there’s a
+    # step or hole), there could be groups like [0], [1], [2]….
     top_edges = p.edges().group_by(bd.Axis.Z)[-1]
     if spec.fillet_radius > 0 and top_edges:
+        # Apply a fillet with the given radius to all top edges.
         p = bd.fillet(top_edges, radius=spec.fillet_radius)
 
+    # Return the completed CAD model
     return p
 
 
