@@ -14,20 +14,19 @@ from build123d_ease import (
 from loguru import (
     logger,
 )  # Rich logging for CLI and debugging
+
+# === Project Utilities (local modules) ===
 from flowcell_manifold.utils.export import (
     export_part,
 )  # Reusable STL/STEP export utility
-
-# === Project Utilities (local modules) ===
 from flowcell_manifold.utils.viewer import (
     debug_show_locals,
     setup_viewer,
     viewer_running,
 )
 
+
 # === CAD spec ===
-
-
 @dataclass
 class Part1Spec:
     """Specification for part1."""
